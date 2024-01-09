@@ -1,12 +1,13 @@
+import re
+import string
+
 import pandas as pd
 from gensim.models import FastText
-from sklearn.metrics.pairwise import cosine_similarity
-import re
+import numpy as np
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-import string
-import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
@@ -40,9 +41,13 @@ def preprocess_data(text):
         else:
             new_words.append(words[i])
     return new_words
+
+
 words = list(model.wv.key_to_index.keys())
 vectors = model.wv.vectors
 word_vector_df = pd.DataFrame(vectors, index=words)
+
+
 def find_similar_drugs(drug_description, model, top_n=3):
     drug_description = preprocess_data(drug_description)
     drug_embedding = np.mean([model.wv[word] for word in drug_description if word in model.wv.key_to_index], axis=0)
@@ -54,5 +59,5 @@ def find_similar_drugs(drug_description, model, top_n=3):
 
     return df.iloc[top_drugs_indices]['name']
 
-text = "a drug which is good for cancer and helps when cancer is in its earlier stage"
-print(find_similar_drugs(text, model))
+drug_usage = "a drug which is good for cancer and helps when cancer is in its earlier stage"
+print(find_similar_drugs(drug_usage, model))

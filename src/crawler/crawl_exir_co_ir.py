@@ -1,7 +1,8 @@
+import csv
 import os
 import requests
+
 from bs4 import BeautifulSoup
-import csv
 
 def get_html(url):
     try:

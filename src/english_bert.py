@@ -1,15 +1,15 @@
 
-import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
 import re
+import string
+
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-import string
 import numpy as np
-
-from transformers import BertModel, BertTokenizer
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 import torch
+from transformers import BertModel, BertTokenizer
 
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
@@ -40,6 +40,7 @@ def preprocess_data(text):
         else:
             new_words.append(words[i])
     return new_words
+
 def get_bert_embeddings(texts):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
@@ -51,8 +52,6 @@ def get_bert_embeddings(texts):
         embedding = embedding.reshape(1, -1)
         embeddings.append(embedding)
     return embeddings
-
-
 
 def convert_string_to_array(s):
     s = s.replace('\n', '').replace('[', '').replace(']', '')
@@ -70,5 +69,7 @@ def find_similar_drugs(drug_description, top_n=3):
     top_drugs_indices = similarities.argsort()[0][::-1][:top_n]
 
     return df.iloc[top_drugs_indices]['name']
-text = "this drug is using Antigen identified as immune target and is presented by APCs to T cells along with other molecules that stimulate their growth and activation."
-print(find_similar_drugs(text))
+
+
+drug_usage = "this drug is using Antigen identified as immune target and is presented by APCs to T cells along with other molecules that stimulate their growth and activation."
+print(find_similar_drugs(drug_usage))

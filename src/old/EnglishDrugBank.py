@@ -1,7 +1,10 @@
-import xml.etree.ElementTree as ET
+import os
+
 import pandas as pd
 from tqdm import tqdm
-import os
+import xml.etree.ElementTree as ET
+
+
 class Drug:
     def __init__(self, features):
         self.name = features['name']
