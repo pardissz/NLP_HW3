@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.corpus import stopwords
-from hazm import Normalizer, word_tokenize, Stemmer, Lemmatizer
+from hazm import Normalizer, word_tokenize, Stemmer, Lemmatizer, stopwords_list
 
-stop_words = set(stopwords.words('persian'))
+stop_words = set(stopwords_list())
 
 # Load the FastText pre-trained model for Persian
 fasttext_model_path = 'cc.fa.300.bin'  # Replace with the path to your Persian FastText model file
