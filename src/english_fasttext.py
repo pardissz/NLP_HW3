@@ -12,7 +12,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
 
-df = pd.read_csv('200+_name_dataset.csv')
+df = pd.read_csv('../data/200+_name_dataset.csv')
 df['preprocessed_ALL'] = df['preprocessed_ALL'].apply(lambda x: x.split())
 
 model = FastText(df['preprocessed_ALL'], vector_size=300, window=7, min_count=1, workers=4, sg=1)

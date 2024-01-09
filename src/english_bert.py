@@ -17,7 +17,7 @@ model_name = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertModel.from_pretrained(model_name)
 
-df = pd.read_csv('200+_name_dataset_bert10.csv')
+df = pd.read_csv('../data/200+_name_dataset_bert10.csv')
 
 def preprocess_data(text):
     text = re.sub(r'([.,;])', r'\1 ', text)
@@ -57,6 +57,20 @@ def convert_string_to_array(s):
     s = s.replace('\n', '').replace('[', '').replace(']', '')
     s = np.fromstring(s, sep=' ')
     return s.reshape(-1, 768)
+"""
+because getting embeddings for all the dataset was really time and memmory consuming we had run this code once with GPU and saved the results,
+if wanted you can run this and construct the embeddings:
+
+df = pd.read_csv('200+_name_dataset.csv')
+tqdm.pandas()
+batch_size = 100
+bert_embeddings = []
+for i in tqdm(range(0, len(df), batch_size)):
+    bert_embeddings.extend(get_bert_embeddings(df['preprocessed_ALL'].iloc[i:i+batch_size]))
+df['bert_embeddings'] = bert_embeddings
+df.to_csv('200+_name_dataset_bert10.csv', index=False)
+"""
+
 
 df['bert_embeddings'] = df['bert_embeddings'].apply(convert_string_to_array)
 
