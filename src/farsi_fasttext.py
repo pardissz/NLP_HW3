@@ -5,16 +5,13 @@ import fasttext
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from nltk.corpus import stopwords
-from hazm import Normalizer, word_tokenize, Stemmer, Lemmatizer, stopwords_list
+from hazm import Normalizer, word_tokenize, Lemmatizer, stopwords_list
 
 stop_words = set(stopwords_list())
 
-# Load the FastText pre-trained model for Persian
-fasttext_model_path = 'cc.fa.300.bin'  # Replace with the path to your Persian FastText model file
+fasttext_model_path = 'cc.fa.300.bin'
 ft_model = fasttext.load_model(fasttext_model_path)
 
-# Load the Hazm library for Persian text processing
 normalizer = Normalizer()
 lemmatizer = Lemmatizer()
 
@@ -48,7 +45,7 @@ def get_fasttext_embeddings(words):
         return np.zeros((1, ft_model.get_dimension()))
     return np.mean(embeddings, axis=0).reshape(1, -1)
 
-df['fasttext_embeddings'] = df['description'].apply(preprocess_data).apply(get_fasttext_embeddings)
+df['fasttext_embeddings'] = df['mavared_masraf'].apply(preprocess_data).apply(get_fasttext_embeddings)
 
 def find_similar_drugs_fasttext(drug_description, top_n=3):
     drug_description = preprocess_data(drug_description)
