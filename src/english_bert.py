@@ -1,24 +1,74 @@
-
+from transformers import BertModel, BertTokenizer
+import torch
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 import re
-import string
-
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+import string
+import numpy as np
+
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
-import torch
-from transformers import BertModel, BertTokenizer
+"""
 
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
+# Load pre-trained model and tokenizer
 model_name = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertModel.from_pretrained(model_name)
 
-df = pd.read_csv('../data/200+_name_dataset_bert10.csv')
+df = pd.read_csv('200+_name_dataset.csv')
 
+def get_bert_embeddings(texts):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    embeddings = []
+    for text in texts:
+        inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True).to(device)
+        outputs = model(**inputs)
+        # Use the [CLS] token representation as sentence embedding
+        embedding = outputs[0][:, 0, :].detach().cpu().numpy()
+        embeddings.append(embedding)
+    return embeddings
+
+tqdm.pandas()
+batch_size = 20  # Reduced batch size
+bert_embeddings = []
+for i in tqdm(range(0, len(df), batch_size)):
+    bert_embeddings.extend(get_bert_embeddings(df['preprocessed_ALL'].iloc[i:i+batch_size]))
+
+bert_embeddings = np.concatenate(bert_embeddings)
+
+np.save('bertnew.npy', bert_embeddings)
+
+"""
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import pandas as pd
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+# Load the embeddings from the .npy file
+bert_embeddings = np.load('bertnew.npy')
+
+# Load pre-trained model and tokenizer
+model_name = 'bert-base-uncased'
+tokenizer = BertTokenizer.from_pretrained(model_name)
+model = BertModel.from_pretrained(model_name)
+
+df = pd.read_csv('../data/200+_name_dataset.csv')
+
+def get_bert_embeddings(texts):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    embeddings = []
+    for text in texts:
+        inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True).to(device)
+        outputs = model(**inputs)
+        embedding = outputs[0][:, 0, :].detach().cpu().numpy()
+        embeddings.append(embedding)
+    return embeddings
 def preprocess_data(text):
     text = re.sub(r'([.,;])', r'\1 ', text)
     text = re.sub(r'\[([^\]]+)\]', r'\1', text)
@@ -40,50 +90,16 @@ def preprocess_data(text):
         else:
             new_words.append(words[i])
     return new_words
-
-def get_bert_embeddings(texts):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
-    embeddings = []
-    for text in texts:
-        inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True).to(device)
-        outputs = model(**inputs)
-        embedding = outputs[0][0].mean(dim=0).detach().cpu().numpy()
-        embedding = embedding.reshape(1, -1)
-        embeddings.append(embedding)
-    return embeddings
-
-def convert_string_to_array(s):
-    s = s.replace('\n', '').replace('[', '').replace(']', '')
-    s = np.fromstring(s, sep=' ')
-    return s.reshape(-1, 768)
-"""
-because getting embeddings for all the dataset was really time and memmory consuming we had run this code once with GPU and saved the results,
-if wanted you can run this and construct the embeddings:
-
-df = pd.read_csv('200+_name_dataset.csv')
-tqdm.pandas()
-batch_size = 100
-bert_embeddings = []
-for i in tqdm(range(0, len(df), batch_size)):
-    bert_embeddings.extend(get_bert_embeddings(df['preprocessed_ALL'].iloc[i:i+batch_size]))
-df['bert_embeddings'] = bert_embeddings
-df.to_csv('200+_name_dataset_bert10.csv', index=False)
-"""
-
-
-df['bert_embeddings'] = df['bert_embeddings'].apply(convert_string_to_array)
-
-
 def find_similar_drugs(drug_description, top_n=3):
     drug_description = preprocess_data(drug_description)
-    drug_embedding = np.mean([get_bert_embeddings([word])[0] for word in drug_description], axis=0)
-    similarities = cosine_similarity(drug_embedding, np.concatenate(df['bert_embeddings'].values))
+
+    drug_embedding = get_bert_embeddings([drug_description])[0]
+
+    similarities = cosine_similarity(drug_embedding, bert_embeddings)
 
     top_drugs_indices = similarities.argsort()[0][::-1][:top_n]
 
     return df.iloc[top_drugs_indices]['name']
 
-
-drug_usage = "this drug is using Antigen identified as immune target and is presented by APCs to T cells along with other molecules that stimulate their growth and activation."
-print(find_similar_drugs(drug_usage))
+text = "HIV infection prevention drug that virus HIV would vanish and needed skin infection be healed from fungas"
+print(find_similar_drugs(text))
