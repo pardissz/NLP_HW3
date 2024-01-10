@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 """
 
-# Load pre-trained model and tokenizer
 model_name = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertModel.from_pretrained(model_name)
@@ -49,10 +48,8 @@ import numpy as np
 import pandas as pd
 stop_words = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
-# Load the embeddings from the .npy file
 bert_embeddings = np.load('bertnew.npy')
 
-# Load pre-trained model and tokenizer
 model_name = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(model_name)
 model = BertModel.from_pretrained(model_name)
