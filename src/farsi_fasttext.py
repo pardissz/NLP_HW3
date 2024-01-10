@@ -1,60 +1,52 @@
-import re
-import string
-
-import fasttext
+from gensim.models import FastText
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from hazm import Normalizer, word_tokenize, Lemmatizer, stopwords_list
+from hazm import word_tokenize, stopwords_list
 
 stop_words = set(stopwords_list())
 
-fasttext_model_path = 'cc.fa.300.bin'
-ft_model = fasttext.load_model(fasttext_model_path)
+df = pd.read_csv('combined_farsi_drug_dataset.csv')
 
-normalizer = Normalizer()
-lemmatizer = Lemmatizer()
+df['preprocessed_ALL'] = df['name'] + " " + df['group'] + " " + df['usage']
+df['preprocessed_ALL'] = df['preprocessed_ALL'].apply(lambda x: x.split())
 
-df = pd.read_csv('farsi_drug_data.csv')
+ft_model = FastText(df['preprocessed_ALL'], vector_size=300, window=7, min_count=1, workers=4, sg=1)
+ft_model.save("Farsi_fasttext_model")
 
-def preprocess_data(text):
-    text = normalizer.normalize(text)
-    text = re.sub(r'([.,;،؛])', r'\1 ', text)
-    text = re.sub(r'\[([^\]]+)\]', r'\1', text)
-    text = re.sub(r'\((.*?)\)', r'\1', text)
-    text = text.translate(str.maketrans('', '', string.punctuation.replace('-', '')))
+
+def preprocess_farsi(text):
+    characters_to_remove = ['"', ",", "/", "(", ")", " ها", " "]
+    for char in characters_to_remove:
+        text = text.replace(char, '')
+
+    # Remove English characters
+    text = ''.join([c for c in text if not (65 <= ord(c) <= 90 or 97 <= ord(c) <= 122)])
+
     words = word_tokenize(text)
-    words = [word for word in words if word.lower() not in stop_words]
-    words = [lemmatizer.lemmatize(word) for word in words]
-    new_words = []
-    skip = False
-    for i in range(len(words)):
-        if skip:
-            skip = False
-            continue
-        if i < len(words)-1 and len(words[i+1]) == 1:
-            new_words.append(words[i]+'-'+words[i+1])
-            skip = True
-        else:
-            new_words.append(words[i])
-    return new_words
+    res = ""
+    for word in words:
+        if word not in stop_words:
+            res += word + " "
+
+    return ' '.join(words)
 
 def get_fasttext_embeddings(words):
-    embeddings = [ft_model[word] for word in words if word in ft_model]
+    embeddings = [ft_model.wv[word] for word in words if word in ft_model.wv.key_to_index]
     if not embeddings:
         return np.zeros((1, ft_model.get_dimension()))
     return np.mean(embeddings, axis=0).reshape(1, -1)
 
-df['fasttext_embeddings'] = df['mavared_masraf'].apply(preprocess_data).apply(get_fasttext_embeddings)
+df['fasttext_embeddings'] = df['preprocessed_ALL'].apply(get_fasttext_embeddings)
 
 def find_similar_drugs_fasttext(drug_description, top_n=3):
-    drug_description = preprocess_data(drug_description)
+    drug_description = preprocess_farsi(drug_description)
     drug_embedding = get_fasttext_embeddings(drug_description)
     similarities = cosine_similarity(drug_embedding, np.concatenate(df['fasttext_embeddings'].values))
 
     top_drugs_indices = similarities.argsort()[0][::-1][:top_n]
 
-    return df.iloc[top_drugs_indices]['name_farsi']
+    return df.iloc[top_drugs_indices]['name']
 
-drug_usage = "این دارو برای آنتیژن شناخته شده به عنوان هدف ایمنی و ارائه شده توسط APC به T سل‌ها به همراه دیگر مولکول‌ها که رشد و فعال‌سازی آن‌ها را تحریک می‌کند، استفاده می‌شود."
+drug_usage = "سرطانی خونی سرطان پوست ملانوم بدخیم"
 print(find_similar_drugs_fasttext(drug_usage))

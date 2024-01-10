@@ -7,10 +7,8 @@ import torch
 tokenizer = AutoTokenizer.from_pretrained("HooshvareLab/bert-base-parsbert-uncased", model_max_length=512)
 model = AutoModel.from_pretrained("HooshvareLab/bert-base-parsbert-uncased")
 
-farsi_drug_dataset = 'data/farsi_drug_data.csv'
-exir_drug_dataset = 'data/exir_drugs.csv'
-df_drug = pd.read_csv(farsi_drug_dataset)
-df_exir = pd.read_csv(exir_drug_dataset)
+drug_dataset = 'combined_farsi_drug_dataset.csv'
+df = pd.read_csv(drug_dataset, lineterminator='\n')
 
 def embed_description(desc):
     tokens = tokenizer(desc, return_tensors='pt', truncation=True, padding=True)
@@ -20,33 +18,19 @@ def embed_description(desc):
     return model_embeddings
 
 result = []
-for _, row in df_drug.iterrows():
-    masraf_embedding = embed_description(row['mavared_masraf'])
-    # name_embedding = embed_description(row['name_farsi'])
-    # attention_embedding = embed_description(row['tavajohat'])
-    result.append(masraf_embedding)
+for _, row in df.iterrows():
+    name_embedding = embed_description(row['name'])
+    group_embedding = embed_description(row['group'])
+    usage_embedding = embed_description(row['usage'])
+    result.append(np.mean((name_embedding, group_embedding, usage_embedding), axis=0))
 
-embeddings_drugbank = np.array(result)
-
-result = []
-
-for _, row in df_exir.iterrows():
-    # name_embedding = embed_description(row['generic_name'])
-    group_embedding = embed_description(row['goroh_darmani'])
-    mavared_embedding = embed_description(row['mavared_masraf'])
-    result.append(np.mean((group_embedding, mavared_embedding), axis=0))
-
-embeddings_exir = np.array(result)
-# embeddings_array = np.concatenate((embeddings_drugbank, embeddings_exir))
+embeddings_array = np.array(result)
 
 def recommend_drugs(input_description, top_k=3):
     input_embedding = embed_description(input_description)
-    exir_similarities = cosine_similarity([input_embedding], embeddings_exir).flatten()
-    exir_indices = exir_similarities.argsort()[-top_k:][::-1]
-    recommended_drugs = df_exir.loc[exir_indices, 'generic_name'].tolist()
-    drugbank_similarities = cosine_similarity([input_embedding], embeddings_drugbank).flatten()
-    drugbank_indices = drugbank_similarities.argsort()[-top_k:][::-1]
-    recommended_drugs.extend(df_drug.loc[drugbank_indices, 'name_farsi'].tolist())
+    similarities = cosine_similarity([input_embedding], embeddings_array).flatten()
+    top_indices = similarities.argsort()[-top_k:][::-1]
+    recommended_drugs = df.loc[top_indices, 'name'].tolist()
     return recommended_drugs
 
 # Example usage
